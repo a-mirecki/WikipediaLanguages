@@ -11,7 +11,8 @@ import cyrtranslit
 
 cyr = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
 for c in cyr:
-    print(c + " : " + cyrtranslit.to_latin(c, 'ru'))
+    print(c + " : " + cyrtranslit.to_latin(c, 'ru') + ",&nbsp;&nbsp;&nbsp;&nbsp;", end = '' )
+    
 
 tries = 0
 correct = 0
