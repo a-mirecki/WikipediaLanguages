@@ -7,6 +7,11 @@ from urllib.request import urlopen
 import json
 import threading
 from wikipedia.exceptions import DisambiguationError, PageError
+import cyrtranslit
+
+cyr = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+for c in cyr:
+    print(c + " : " + cyrtranslit.to_latin(c, 'ru'))
 
 tries = 0
 correct = 0
@@ -18,8 +23,7 @@ currentdict = {}
 alphabet = [chr(i) for i in range(ord('a'),ord('z')+1)]
 
 def testAlgorithm(i, max, isLearning, isWiki):
-    arr = ["pl", "en", "fr", "de", "es"]
-    lang = arr[randint(0, 4)]
+    lang = 'ru'
     wikipedia.set_lang(lang)
     url = "https://" + lang + ".wikipedia.org/w/api.php?action=query&list=random&format=json&rnnamespace=0&rnlimit=1"
     response = urlopen(url)
@@ -33,16 +37,19 @@ def handleTestThread(title, lang, i, max, isLearning, isWiki):
     searchresponse = wikipedia.search(title)
     try:
         page = wikipedia.page(searchresponse[0])
-        print("Wylosowany artykul to: " + title + " -  jest w jezyku " + lang)
+        print("Wylosowany artykul to: " + title)
+        translation = cyrtranslit.to_latin(page.content, 'ru')
+
         if(isLearning):
-            learnFromText(page.content, lang)
-        calculateDistance(page.content, lang, i, max, isLearning, isWiki)
+            learnFromText(translation, lang)
+        calculateDistance(translation, lang, i, max, isLearning, isWiki)
     except DisambiguationError:
         testAlgorithm(i, max, isLearning, isWiki)
         print("Zly artykul")
     except PageError:
         testAlgorithm(i, max, isLearning, isWiki)
         print("Duplikat referencji")
+
 
 def getDictFromText(text, isPercent):
     lettercount = 0
@@ -108,7 +115,8 @@ def handleThread(title, language):
     searchresponse = wikipedia.search(title)
     try:
         page = wikipedia.page(searchresponse[0])
-        learnFromText(page.content, language)
+        translation = cyrtranslit.to_latin(page.content, 'ru')
+        learnFromText(translation, language)
         print("Wylosowany artykul to: " + title)
     except DisambiguationError:
         print("Zly artykul")
@@ -173,101 +181,17 @@ def learnFromText(text, languagename):
     dict["language"] = languagename
     handleFile(dict)
 
-def learnFromWikipedia():
-    arr = [ "pl" , "en", "fr", "de", "cs"]
-    print("Wybierz jezyk, ktorego algorytm ma sie nauczyc ")
-    print(arr)
-    language = input()
-    for i in arr:
-        if language == i:
-            break
-    else:
-        print("Wybrano zly jezyk")
-        return
-    wikipedia.set_lang(language)
-    searchquery = input("Podaj nazwe strony, ktora chcesz wyszukac ")
-    searchresponse = wikipedia.search(searchquery)
-    for i in searchresponse:
-        i = i.replace("u'", "")
-        print(i)
-    pagename = input("Przepisz dokladnie nazwe strony, ktorej chcesz sie nauczyc ")
-    for i in searchresponse:
-        if pagename == i:
-            break
-    else:
-        print("Wpisano zla nazwe strony")
-        return
-    newpage = wikipedia.page(pagename)
-    print(newpage.content)
-    learnFromText(newpage.content, language)
-
-def learnFromFiles():
-    path = fm.load('resources')
-    for f in path:
-        isFirst = True
-        lettercount = 0
-        for i in fm.read(f):
-            if isFirst:
-                for x in langs:
-                    if i.replace("\n", "") == x.get("language"):
-                        currentdict = x
-                        break
-                else:
-                    langs.append({"language": i.replace("\n", "")})
-                    currentdict = langs[len(langs)-1]
-                isFirst = False
-            else:
-                for singleletter in i:
-                    if (ord(singleletter) >= 97 and ord(singleletter)<=122) or (ord(singleletter) >= 65 and ord(singleletter)<=90):
-                        lettercount = lettercount +1
-                        if singleletter.lower() in currentdict:
-                            currentdict[singleletter.lower()] = currentdict[singleletter.lower()]+1
-                        else:
-                            currentdict[singleletter.lower()] = 1
-        if "letternumber" in currentdict:
-            currentdict["letternumber"] = currentdict["letternumber"] +  float(lettercount)
-        else:
-            currentdict["letternumber"] = float(lettercount)
-    for i in langs:
-        handleFile(i)
 
 def showMenu():
     print("")
     print("Co chcesz zrobic?")
-    print( "1. Ucz sie z plikow w katalogu /resources/")
-    print( "2. Ucz sie z wikipedii")
-    print( "3. Ucz sie z wprowadzonego w konsole tekstu")
     print( "4. Ucz sie z pomoca losowych artykulow na wikipedii\n")
     print( "5. Przetestuj algorytm bez uczenia - wikipedia")
     print( "6. Przetestuj algorytm z uczeniem - wikipedia")
-    print( "7. Przetestuj wpisujac w kosnoli")
     choose = int(input())
-    if choose == 1:
-        learnFromFiles()
-    elif choose == 2:
-        learnFromWikipedia()
-    elif choose == 3:
-        arr = ["pl", "en", "fr", "de", "cs"]
-        print(arr)
-        languagename = input("Podaj nazwe jezyka z listy powyzej ")
-        for i in arr:
-            if languagename == i:
-                break
-        else:
-            print("Blad: Wybrano jezyk spoza tablicy")
-            showMenu()
-        text = input("Podaj swoj tekst ")
-        learnFromText(text, languagename)
-    elif choose == 4:
-        arr = ["pl", "en", "fr", "de", "cs"]
-        print(arr)
-        languagename = input("Podaj nazwe jezyka z listy powyzej ")
-        for i in arr:
-            if languagename == i:
-                break
-        else:
-            print("Blad: Wybrano jezyk spoza tablicy")
-            showMenu()
+
+    if choose == 4:
+        languagename = "ru"
         variable = int(input("Podaj liczbe artykulow"))
         getRandomArticleFromWikipedia(0, variable, languagename)
     elif choose==5:
@@ -276,18 +200,6 @@ def showMenu():
     elif choose==6:
         n = input("Ile razy przetestowac algorytm?")
         testAlgorithm(0, n, True, True)
-    elif choose ==7:
-        arr = ["pl", "en", "fr", "de", "cs"]
-        print(arr)
-        languagename = input("Podaj nazwe jezyka z listy powyzej ")
-        for i in arr:
-            if languagename == i:
-                break
-        else:
-            print("Blad: Wybrano jezyk spoza tablicy")
-            showMenu()
-        text = input("wpisz tekst")
-        calculateDistance(text, languagename, 1, 0, False, False)
     else:
         print("Nie wybrano poprawnie ")
 
